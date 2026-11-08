@@ -1,0 +1,23 @@
+services:
+  moodle:
+    image: moodle:local
+    ports:
+      - "8081:80"
+    volumes:
+      - ./config.php:/var/www/moodle/config.php:ro
+      - ./moodledata:/var/www/moodledata
+    depends_on:
+      - moodle-db
+
+  moodle-db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: moodle
+      POSTGRES_USER: moodle
+      POSTGRES_PASSWORD: moodle_local_test
+    volumes:
+      - moodle-db-data:/var/lib/postgresql/data
+
+volumes:
+  moodle-db-data:
+    external: true
