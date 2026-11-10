@@ -1,5 +1,5 @@
 resource "aws_vpc" "moodle" {
-  cidr_block = "10.0.0.0/16"
+  cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
 }
 
@@ -103,11 +103,11 @@ resource "aws_vpc_security_group_ingress_rule" "alb_https" {
 }
 
 resource "aws_vpc_security_group_egress_rule" "alb_to_ecs" {
-  security_group_id = aws_security_group.alb.id
-  cidr_ipv4         = "10.0.0.0/16"
-  from_port         = 8080
-  to_port           = 8080
-  ip_protocol       = "tcp"
+  security_group_id            = aws_security_group.alb.id
+  referenced_security_group_id = aws_security_group.ecs.id
+  from_port                    = 8080
+  to_port                      = 8080
+  ip_protocol                  = "tcp"
 }
 
 resource "aws_security_group" "ecs" {
@@ -151,5 +151,93 @@ resource "aws_vpc_security_group_egress_rule" "ecs_to_rds" {
   referenced_security_group_id = aws_security_group.rds.id
   from_port                    = 5432
   to_port                      = 5432
+  ip_protocol                  = "tcp"
+}
+
+resource "aws_vpc_endpoint" "ecr_api" {
+  vpc_id            = aws_vpc.moodle.id
+  service_name      = "com.amazonaws.eu-north-1.ecr.api"
+  vpc_endpoint_type = "Interface"
+  subnet_ids = [
+    aws_subnet.private_1.id,
+    aws_subnet.private_2.id
+  ]
+  private_dns_enabled = true
+  security_group_ids  = [aws_security_group.endpoints.id]
+
+  tags = {
+    Name = "moodle-ecr-api-endpoint"
+  }
+}
+
+resource "aws_security_group" "endpoints" {
+  name        = "moodle-endpoints-sg"
+  description = "Security group for VPC Endpoints"
+  vpc_id      = aws_vpc.moodle.id
+
+  tags = {
+    Name = "moodle-endpoints-sg"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "endpoints_from_ecs" {
+  security_group_id            = aws_security_group.endpoints.id
+  referenced_security_group_id = aws_security_group.ecs.id
+  from_port                    = 443
+  to_port                      = 443
+  ip_protocol                  = "tcp"
+}
+
+resource "aws_vpc_endpoint" "ecr_dkr" {
+  vpc_id            = aws_vpc.moodle.id
+  service_name      = "com.amazonaws.eu-north-1.ecr.dkr"
+  vpc_endpoint_type = "Interface"
+  subnet_ids = [
+    aws_subnet.private_1.id,
+    aws_subnet.private_2.id
+  ]
+  private_dns_enabled = true
+  security_group_ids  = [aws_security_group.endpoints.id]
+
+  tags = {
+    Name = "moodle-ecr-dkr-endpoint"
+  }
+}
+
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = aws_vpc.moodle.id
+  service_name      = "com.amazonaws.eu-north-1.s3"
+  vpc_endpoint_type = "Gateway"
+
+  route_table_ids = [
+    aws_vpc.moodle.main_route_table_id
+  ]
+
+  tags = {
+    Name = "moodle-s3-endpoint"
+  }
+}
+
+resource "aws_vpc_endpoint" "logs" {
+  vpc_id            = aws_vpc.moodle.id
+  service_name      = "com.amazonaws.eu-north-1.logs"
+  vpc_endpoint_type = "Interface"
+  subnet_ids = [
+    aws_subnet.private_1.id,
+    aws_subnet.private_2.id
+  ]
+  private_dns_enabled = true
+  security_group_ids  = [aws_security_group.endpoints.id]
+
+  tags = {
+    Name = "moodle-logs-endpoint"
+  }
+}
+
+resource "aws_vpc_security_group_egress_rule" "ecs_to_endpoints" {
+  security_group_id            = aws_security_group.ecs.id
+  referenced_security_group_id = aws_security_group.endpoints.id
+  from_port                    = 443
+  to_port                      = 443
   ip_protocol                  = "tcp"
 }

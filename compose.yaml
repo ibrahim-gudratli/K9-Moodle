@@ -2,7 +2,7 @@ services:
   moodle:
     image: moodle:local
     ports:
-      - "8081:80"
+      - "8081:8080"
     volumes:
       - ./config.php:/var/www/moodle/config.php:ro
       - ./moodledata:/var/www/moodledata

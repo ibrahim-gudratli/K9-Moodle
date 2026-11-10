@@ -28,8 +28,10 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     exif \
     opcache
 
-# Enable Apache modules
-RUN a2enmod rewrite headers
+# Enable Apache modules and configure port 8080
+RUN a2enmod rewrite headers \
+    && sed -i 's/Listen 80/Listen 8080/' /etc/apache2/ports.conf \
+    && sed -i 's/:80>/:8080>/' /etc/apache2/sites-available/000-default.conf
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -57,6 +59,6 @@ RUN mkdir -p /var/moodledata \
     && chown -R www-data:www-data /var/moodledata \
     && chown -R www-data:www-data /var/www/moodle
 
-EXPOSE 80
+EXPOSE 8080
 
 CMD ["apache2-foreground"]
